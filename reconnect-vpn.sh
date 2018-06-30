@@ -6,7 +6,7 @@
 #    SOURCE(S):  https://forum.synology.com/enu/viewtopic.php?f=241&t=65444
 #
 #       AUTHOR:  Ian Harrier
-#      VERSION:  1.0.1
+#      VERSION:  1.0.2
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -17,19 +17,19 @@
 if [[ -f /usr/syno/etc/synovpnclient/l2tp/l2tpclient.conf ]]; then
 	L2TP_CONFIG=$(cat /usr/syno/etc/synovpnclient/l2tp/l2tpclient.conf)
 else
- 	L2TP_CONFIG=""
+	L2TP_CONFIG=""
 fi
 
 if [[ -f /usr/syno/etc/synovpnclient/openvpn/ovpnclient.conf ]]; then
- 	OPENVPN_CONFIG=$(cat /usr/syno/etc/synovpnclient/openvpn/ovpnclient.conf)
+	OPENVPN_CONFIG=$(cat /usr/syno/etc/synovpnclient/openvpn/ovpnclient.conf)
 else
- 	OPENVPN_CONFIG=""
+	OPENVPN_CONFIG=""
 fi
 
 if [[ -f /usr/syno/etc/synovpnclient/pptp/pptpclient.conf ]]; then
- 	PPTP_CONFIG=$(cat /usr/syno/etc/synovpnclient/pptp/pptpclient.conf)
+	PPTP_CONFIG=$(cat /usr/syno/etc/synovpnclient/pptp/pptpclient.conf)
 else
- 	PPTP_CONFIG=""
+	PPTP_CONFIG=""
 fi
 
 #-------------------------------------------------------------------------------
@@ -44,13 +44,13 @@ CONFIGS_QTY=$(echo "$CONFIGS_ALL" | grep -e '\[l' -e '\[o' -e '\[p' | wc -l)
 
 # Only proceed if there is 1 VPN profile
 if [[ $CONFIGS_QTY -eq 1 ]]; then
- 	echo "[I] There is 1 VPN profile. Continuing..."
+	echo "[I] There is 1 VPN profile. Continuing..."
 elif [[ $CONFIGS_QTY -gt 1 ]]; then
- 	echo "[E] There are $CONFIGS_QTY VPN profiles. This script supports only 1 VPN profile. Exiting..."
- 	exit 1
+	echo "[E] There are $CONFIGS_QTY VPN profiles. This script supports only 1 VPN profile. Exiting..."
+	exit 1
 else
- 	echo "[W] There are 0 VPN profiles. Please create a VPN profile. Exiting..."
- 	exit 1
+	echo "[W] There are 0 VPN profiles. Please create a VPN profile. Exiting..."
+	exit 1
 fi
 
 #-------------------------------------------------------------------------------
@@ -62,11 +62,11 @@ PROFILE_NAME=$(echo "$CONFIGS_ALL" | grep -oP "conf_name=+\K\w+")
 PROFILE_RECONNECT=$(echo "$CONFIGS_ALL" | grep -oP "reconnect=+\K\w+")
 
 if [[ $(echo "$CONFIGS_ALL" | grep '\[l') ]]; then
- 	PROFILE_PROTOCOL="l2tp"
+	PROFILE_PROTOCOL="l2tp"
 elif [[ $(echo "$CONFIGS_ALL" | grep '\[o') ]]; then
- 	PROFILE_PROTOCOL="openvpn"
+	PROFILE_PROTOCOL="openvpn"
 elif [[ $(echo "$CONFIGS_ALL" | grep '\[p') ]]; then
- 	PROFILE_PROTOCOL="pptp"
+	PROFILE_PROTOCOL="pptp"
 fi
 
 #-------------------------------------------------------------------------------
@@ -74,15 +74,15 @@ fi
 #-------------------------------------------------------------------------------
 
 if [[ $(/usr/syno/bin/synovpnc get_conn | grep Uptime) ]]; then
- 	echo "[I] VPN is already connected. Exiting..."
- 	exit 0
+	echo "[I] VPN is already connected. Exiting..."
+	exit 0
 fi
 
 if [[ $PROFILE_RECONNECT != "yes" ]]; then
- 	echo "[W] VPN is not connected, but reconnect is disabled. Please enable reconnect for for the \"$PROFILE_NAME\" VPN profile. Exiting..."
- 	exit 1
+	echo "[W] VPN is not connected, but reconnect is disabled. Please enable reconnect for for the \"$PROFILE_NAME\" VPN profile. Exiting..."
+	exit 1
 else
- 	echo "[W] VPN is not connected. Attempting to reconnect..."
+	echo "[W] VPN is not connected. Attempting to reconnect..."
 fi
 
 #-------------------------------------------------------------------------------
@@ -100,9 +100,9 @@ echo proto=$PROFILE_PROTOCOL >> /usr/syno/etc/synovpnclient/vpnc_connecting
 #-------------------------------------------------------------------------------
 
 if [[ $(/usr/syno/bin/synovpnc get_conn | grep Uptime) ]]; then
- 	echo "[I] VPN successfully reconnected. Exiting..."
- 	exit 1
+	echo "[I] VPN successfully reconnected. Exiting..."
+	exit 1
 else
- 	echo "[E] VPN failed to reconnect. Exiting..."
- 	exit 1
+	echo "[E] VPN failed to reconnect. Exiting..."
+	exit 1
 fi
