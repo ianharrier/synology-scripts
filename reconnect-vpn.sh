@@ -6,7 +6,7 @@
 #    SOURCE(S):  https://forum.synology.com/enu/viewtopic.php?f=241&t=65444
 #
 #       AUTHOR:  Ian Harrier
-#      VERSION:  1.0.0
+#      VERSION:  1.0.1
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -89,6 +89,7 @@ fi
 #  Reconnect the VPN connection
 #-------------------------------------------------------------------------------
 
+/usr/syno/bin/synovpnc kill_client
 echo conf_id=$PROFILE_ID > /usr/syno/etc/synovpnclient/vpnc_connecting
 echo conf_name=$PROFILE_NAME >> /usr/syno/etc/synovpnclient/vpnc_connecting
 echo proto=$PROFILE_PROTOCOL >> /usr/syno/etc/synovpnclient/vpnc_connecting
