@@ -6,7 +6,7 @@
 #    SOURCE(S):  https://forum.synology.com/enu/viewtopic.php?f=241&t=65444
 #
 #       AUTHOR:  Ian Harrier
-#      VERSION:  1.0.2
+#      VERSION:  1.0.3
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -90,10 +90,12 @@ fi
 #-------------------------------------------------------------------------------
 
 /usr/syno/bin/synovpnc kill_client
+sleep 20
 echo conf_id=$PROFILE_ID > /usr/syno/etc/synovpnclient/vpnc_connecting
 echo conf_name=$PROFILE_NAME >> /usr/syno/etc/synovpnclient/vpnc_connecting
 echo proto=$PROFILE_PROTOCOL >> /usr/syno/etc/synovpnclient/vpnc_connecting
-/usr/syno/bin/synovpnc reconnect --protocol=$PROFILE_PROTOCOL --name=$PROFILE_NAME --retry=1 --interval=30
+/usr/syno/bin/synovpnc connect --id=$PROFILE_ID
+sleep 20
 
 #-------------------------------------------------------------------------------
 #  Re-check the VPN connection
