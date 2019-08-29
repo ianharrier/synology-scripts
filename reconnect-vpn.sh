@@ -73,7 +73,7 @@ fi
 #  Check the VPN connection
 #-------------------------------------------------------------------------------
 
-if [[ $(/usr/syno/bin/synovpnc get_conn | grep Uptime) ]]; then
+if [[ $(/usr/syno/bin/synovpnc get_conn | grep Uptime) && ! $(/usr/syno/bin/synovpnc get_conn | grep "RX : 0") ]]; then
 	echo "[I] VPN is already connected. Exiting..."
 	exit 0
 fi
