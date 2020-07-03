@@ -6,9 +6,18 @@
 #    SOURCE(S):  https://forum.synology.com/enu/viewtopic.php?f=241&t=65444
 #
 #       AUTHOR:  Ian Harrier
-#      VERSION:  1.0.4
+#      VERSION:  1.1.0
 #      LICENSE:  MIT License
 #===============================================================================
+
+#-------------------------------------------------------------------------------
+#  User-customizable variables
+#-------------------------------------------------------------------------------
+
+# VPN_CHECK_METHOD : How to check if the VPN connection is alive. Options:
+# - "dsm_status" (default) : assume OK if Synology DSM reports the VPN connection is alive
+# - "gateway_ping" : assume OK if the default gateway (i.e. VPN server) responds to ICMP ping
+VPN_CHECK_METHOD=dsm_status
 
 #-------------------------------------------------------------------------------
 #  Process VPN config files
@@ -51,22 +60,58 @@ fi
 #  Check the VPN connection
 #-------------------------------------------------------------------------------
 
-if [[ $(/usr/syno/bin/synovpnc get_conn | grep Uptime) ]]; then
-	echo "[I] VPN is already connected. Exiting..."
-	exit 0
-fi
+function check_dsm_status() {
+	if [[ $(/usr/syno/bin/synovpnc get_conn | grep Uptime) ]]; then
+		echo "[I] Synology DSM reports VPN is connected."
+		return 0
+	else
+		echo "[W] Synology DSM reports VPN is not connected."
+		return 1
+	fi
+}
 
-if [[ $PROFILE_RECONNECT != "yes" ]]; then
-	echo "[W] VPN is not connected, but reconnect is disabled. Please enable reconnect for for the \"$PROFILE_NAME\" VPN profile. Exiting..."
-	exit 1
-else
-	echo "[W] VPN is not connected. Attempting to reconnect..."
+function check_gateway_ping() {
+	local CLIENT_IP=$(/usr/syno/bin/synovpnc get_conn | grep "Client IP" | awk '{ print $4 }')
+	local TUNNEL_INTERFACE=$(ip addr | grep $CLIENT_IP | awk '{ print $7 }')
+	local GATEWAY_IP=$(ip route | grep -v "src $CLIENT_IP" | grep $TUNNEL_INTERFACE | awk '{ print $3 }' | head -n 1)
+	if ping -c 1 -i 1 -w 15 -I $TUNNEL_INTERFACE $GATEWAY_IP > /dev/null 2>&1; then
+		echo "[I] The gateway IP $GATEWAY_IP responded to ping."
+		return 0
+	else
+		echo "[W] The gateway IP $GATEWAY_IP did not respond to ping."
+		return 1
+	fi
+}
+
+function check_vpn_connection() {
+	local CONNECTION_STATUS=disconnected
+	if [[ $VPN_CHECK_METHOD = "gateway_ping" ]]; then
+		check_dsm_status && check_gateway_ping && CONNECTION_STATUS=connected
+	else
+		check_dsm_status && CONNECTION_STATUS=connected
+	fi
+	if [[ $CONNECTION_STATUS = "connected" ]]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+if check_vpn_connection; then
+	echo "[I] Reconnect is not needed. Exiting..."
+	exit 0
 fi
 
 #-------------------------------------------------------------------------------
 #  Reconnect the VPN connection
 #-------------------------------------------------------------------------------
 
+if [[ $PROFILE_RECONNECT != "yes" ]]; then
+	echo "[W] Reconnect is disabled. Please enable reconnect for for the \"$PROFILE_NAME\" VPN profile. Exiting..."
+	exit 1
+fi
+
+echo "[I] Attempting to reconnect..."
 /usr/syno/bin/synovpnc kill_client
 sleep 20
 echo conf_id=$PROFILE_ID > /usr/syno/etc/synovpnclient/vpnc_connecting
@@ -79,7 +124,7 @@ sleep 20
 #  Re-check the VPN connection
 #-------------------------------------------------------------------------------
 
-if [[ $(/usr/syno/bin/synovpnc get_conn | grep Uptime) ]]; then
+if check_vpn_connection; then
 	echo "[I] VPN successfully reconnected. Exiting..."
 	exit 1
 else
