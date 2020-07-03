@@ -6,38 +6,16 @@
 #    SOURCE(S):  https://forum.synology.com/enu/viewtopic.php?f=241&t=65444
 #
 #       AUTHOR:  Ian Harrier
-#      VERSION:  1.0.3
+#      VERSION:  1.0.4
 #      LICENSE:  MIT License
 #===============================================================================
 
 #-------------------------------------------------------------------------------
-#  Pull in VPN config files
-#-------------------------------------------------------------------------------
-
-if [[ -f /usr/syno/etc/synovpnclient/l2tp/l2tpclient.conf ]]; then
-	L2TP_CONFIG=$(cat /usr/syno/etc/synovpnclient/l2tp/l2tpclient.conf)
-else
-	L2TP_CONFIG=""
-fi
-
-if [[ -f /usr/syno/etc/synovpnclient/openvpn/ovpnclient.conf ]]; then
-	OPENVPN_CONFIG=$(cat /usr/syno/etc/synovpnclient/openvpn/ovpnclient.conf)
-else
-	OPENVPN_CONFIG=""
-fi
-
-if [[ -f /usr/syno/etc/synovpnclient/pptp/pptpclient.conf ]]; then
-	PPTP_CONFIG=$(cat /usr/syno/etc/synovpnclient/pptp/pptpclient.conf)
-else
-	PPTP_CONFIG=""
-fi
-
-#-------------------------------------------------------------------------------
-#  Process config files
+#  Process VPN config files
 #-------------------------------------------------------------------------------
 
 # Concatenate the config files
-CONFIGS_ALL="$L2TP_CONFIG $OPENVPN_CONFIG $PPTP_CONFIG"
+CONFIGS_ALL=$(cat /usr/syno/etc/synovpnclient/*/*client.conf 2>/dev/null)
 
 # How many VPN profiles are there?
 CONFIGS_QTY=$(echo "$CONFIGS_ALL" | grep -e '\[l' -e '\[o' -e '\[p' | wc -l)
