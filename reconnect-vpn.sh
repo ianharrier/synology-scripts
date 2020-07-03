@@ -6,7 +6,7 @@
 #    SOURCE(S):  https://forum.synology.com/enu/viewtopic.php?f=241&t=65444
 #
 #       AUTHOR:  Ian Harrier
-#      VERSION:  1.1.0
+#      VERSION:  1.1.1
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -23,8 +23,8 @@ VPN_CHECK_METHOD=dsm_status
 #  Process VPN config files
 #-------------------------------------------------------------------------------
 
-# Concatenate the config files
-CONFIGS_ALL=$(cat /usr/syno/etc/synovpnclient/*/*client.conf 2>/dev/null)
+# Get the VPN config files
+CONFIGS_ALL=$(cat /usr/syno/etc/synovpnclient/{l2tp,openvpn,pptp}/*client.conf 2>/dev/null)
 
 # How many VPN profiles are there?
 CONFIGS_QTY=$(echo "$CONFIGS_ALL" | grep -e '\[l' -e '\[o' -e '\[p' | wc -l)
