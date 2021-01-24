@@ -4,9 +4,10 @@
 #
 #  DESCRIPTION:  Reconnect a disconnected VPN session on Synology DSM
 #    SOURCE(S):  https://forum.synology.com/enu/viewtopic.php?f=241&t=65444
+#       README:  https://github.com/ianharrier/synology-scripts
 #
 #       AUTHOR:  Ian Harrier
-#      VERSION:  1.1.1
+#      VERSION:  1.2.0
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -34,10 +35,10 @@ if [[ $CONFIGS_QTY -eq 1 ]]; then
 	echo "[I] There is 1 VPN profile. Continuing..."
 elif [[ $CONFIGS_QTY -gt 1 ]]; then
 	echo "[E] There are $CONFIGS_QTY VPN profiles. This script supports only 1 VPN profile. Exiting..."
-	exit 1
+	exit 3
 else
 	echo "[W] There are 0 VPN profiles. Please create a VPN profile. Exiting..."
-	exit 1
+	exit 3
 fi
 
 #-------------------------------------------------------------------------------
@@ -108,7 +109,7 @@ fi
 
 if [[ $PROFILE_RECONNECT != "yes" ]]; then
 	echo "[W] Reconnect is disabled. Please enable reconnect for for the \"$PROFILE_NAME\" VPN profile. Exiting..."
-	exit 1
+	exit 3
 fi
 
 echo "[I] Attempting to reconnect..."
@@ -129,5 +130,5 @@ if check_vpn_connection; then
 	exit 1
 else
 	echo "[E] VPN failed to reconnect. Exiting..."
-	exit 1
+	exit 2
 fi
