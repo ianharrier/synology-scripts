@@ -6,14 +6,18 @@
 #    SOURCE(S):  https://community.synology.com/enu/forum/17/post/53791
 #       README:  https://github.com/ianharrier/synology-scripts
 #
-#      AUTHORS:  Ian Harrier, Deac Karns, Michael Lake
-#      VERSION:  1.3.1
+#      AUTHORS:  Ian Harrier, Deac Karns, Michael Lake, mchalandon
+#      VERSION:  1.4.0
 #      LICENSE:  MIT License
 #===============================================================================
 
 #-------------------------------------------------------------------------------
 #  User-customizable variables
 #-------------------------------------------------------------------------------
+
+# PROFILE_NAME : The VPN "Profile Name" (from DSM) you want to reconnect, in case multiple VPN profiles exist.
+# - Note: Leaving this blank will assume only one VPN profile is configured.
+PROFILE_NAME=""
 
 # VPN_CHECK_METHOD : How to check if the VPN connection is alive. Options:
 # - "dsm_status" (default) : assume OK if Synology DSM reports the VPN connection is alive
@@ -30,6 +34,11 @@ CUSTOM_PING_ADDRESS=example.com
 
 # Get the VPN config files
 CONFIGS_ALL=$(cat /usr/syno/etc/synovpnclient/{l2tp,openvpn,pptp}/*client.conf 2>/dev/null)
+
+if [ -n "$VPN_IDENTIFIER" ]; then
+  echo "[I] Searching $VPN_IDENTIFIER in VPN configurations..."
+  CONFIGS_ALL=$(echo "$CONFIGS_ALL" | grep -Poz '\[[l|o|p]\d*\][^\[]*'$VPN_IDENTIFIER'[^\[]*')
+fi
 
 # How many VPN profiles are there?
 CONFIGS_QTY=$(echo "$CONFIGS_ALL" | grep -e '\[l' -e '\[o' -e '\[p' | wc -l)
