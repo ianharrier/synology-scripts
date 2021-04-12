@@ -43,12 +43,12 @@ CONFIGS_QTY=$(echo "$CONFIGS_ALL" | grep -e '\[l' -e '\[o' -e '\[p' | wc -l)
 
 # Only proceed if there is 1 VPN profile
 if [[ $CONFIGS_QTY -eq 1 ]]; then
-	echo "[I] There is 1 VPN profile. Continuing..."
+	echo "[I] 1 VPN profile found. Continuing..."
 elif [[ $CONFIGS_QTY -gt 1 ]]; then
-	echo "[E] There are $CONFIGS_QTY VPN profiles. This script supports only 1 VPN profile. Exiting..."
+	echo "[E] $CONFIGS_QTY VPN profiles found. This script supports only 1 VPN profile. Exiting..."
 	exit 3
 else
-	echo "[W] There are 0 VPN profiles. Please create a VPN profile. Exiting..."
+	echo "[W] 0 VPN profiles found. Please create a VPN profile. Exiting..."
 	exit 3
 fi
 
