@@ -7,7 +7,7 @@
 #       README:  https://github.com/ianharrier/synology-scripts
 #
 #       AUTHOR:  Ian Harrier
-#      VERSION:  1.2.0
+#      VERSION:  1.2.0 # todo : bump version
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -20,12 +20,23 @@
 # - "gateway_ping" : assume OK if the default gateway (i.e. VPN server) responds to ICMP ping
 VPN_CHECK_METHOD=dsm_status
 
+# VPN_IDENTIFIER : Allow to specify which VPN connection should be used, in case several configurations exist.
+#                  The string used as identifier, should match only one config (e.g. you can use the profile name).
+# - variable not set (default) : assume Only one Vpn is configured
+# - any string : select the matching VPN connection
+#VPN_IDENTIFIER="My_Vpn_Profile_Name"
+
 #-------------------------------------------------------------------------------
 #  Process VPN config files
 #-------------------------------------------------------------------------------
 
 # Get the VPN config files
 CONFIGS_ALL=$(cat /usr/syno/etc/synovpnclient/{l2tp,openvpn,pptp}/*client.conf 2>/dev/null)
+
+if [ -n "$VPN_IDENTIFIER" ]; then
+  echo "[I] Searching $VPN_IDENTIFIER in VPN configurations..."
+  CONFIGS_ALL=$(echo "$CONFIGS_ALL" | grep -Poz '\[[l|o|p]\d*\][^\[]*'$VPN_IDENTIFIER'[^\[]*')
+fi
 
 # How many VPN profiles are there?
 CONFIGS_QTY=$(echo "$CONFIGS_ALL" | grep -e '\[l' -e '\[o' -e '\[p' | wc -l)
