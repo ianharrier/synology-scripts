@@ -3,7 +3,7 @@
 #         FILE:  reconnect-vpn.sh
 #
 #  DESCRIPTION:  Reconnect a disconnected VPN session on Synology DSM
-#    SOURCE(S):  https://forum.synology.com/enu/viewtopic.php?f=241&t=65444
+#    SOURCE(S):  https://community.synology.com/enu/forum/17/post/53791
 #       README:  https://github.com/ianharrier/synology-scripts
 #
 #       AUTHOR:  Ian Harrier
