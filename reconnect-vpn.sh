@@ -7,7 +7,7 @@
 #       README:  https://github.com/ianharrier/synology-scripts
 #
 #       AUTHOR:  Ian Harrier
-#      VERSION:  1.2.0
+#      VERSION:  1.2.1
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -74,7 +74,7 @@ function check_dsm_status() {
 function check_gateway_ping() {
 	local CLIENT_IP=$(/usr/syno/bin/synovpnc get_conn | grep "Client IP" | awk '{ print $4 }')
 	local TUNNEL_INTERFACE=$(ip addr | grep $CLIENT_IP | awk '{ print $7 }')
-	local GATEWAY_IP=$(ip route | grep -v "src $CLIENT_IP" | grep $TUNNEL_INTERFACE | awk '{ print $3 }' | head -n 1)
+	local GATEWAY_IP=$(ip route | grep $TUNNEL_INTERFACE | grep -oE '([0-9]+\.){3}[0-9]+ dev' | awk '{ print $1 }' | head -n 1)
 	if ping -c 1 -i 1 -w 15 -I $TUNNEL_INTERFACE $GATEWAY_IP > /dev/null 2>&1; then
 		echo "[I] The gateway IP $GATEWAY_IP responded to ping."
 		return 0
