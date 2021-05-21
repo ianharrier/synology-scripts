@@ -7,7 +7,7 @@
 #       README:  https://github.com/ianharrier/synology-scripts
 #
 #       AUTHOR:  Ian Harrier
-#      VERSION:  1.2.1
+#      VERSION:  1.2.1 (needs update)
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -19,6 +19,21 @@
 # - "dsm_status" (default) : assume OK if Synology DSM reports the VPN connection is alive
 # - "gateway_ping" : assume OK if the default gateway (i.e. VPN server) responds to ICMP ping
 VPN_CHECK_METHOD=dsm_status
+
+# DISPLAY_HARDWARE_ALERTS : Cause the Synology to beep and flash lights when 
+# the VPN is interrupted. Options:
+# - "true" : Beep and change Status light based on connection status:
+#               - Interrupted: Single long beep and solid orange Status light
+#               - Reconnecting: blinking orange Status light
+#               - Reconnected: Single short beep and solid green Status light
+# - "false" (default) : do not beep or change lights
+DISPLAY_HARDWARE_ALERTS=false
+
+# STATUS_OFFLINE_INDICATOR_FILE : Create a file in the filesystem when VPN is 
+# interrupted and will be deleted once VPN reconnects. Options:
+# - commented (default) : Do not create an indicator file
+# - /full/path/to/file : Full path of file to create.
+#STATUS_OFFLINE_INDICATOR_FILE="/volume1/Share/__WARNING - VPN IS OFFLINE"
 
 #-------------------------------------------------------------------------------
 #  Process VPN config files
@@ -48,6 +63,7 @@ fi
 PROFILE_ID=$(echo $CONFIGS_ALL | cut -d "[" -f2 | cut -d "]" -f1)
 PROFILE_NAME=$(echo "$CONFIGS_ALL" | grep -oP "conf_name=+\K\w+")
 PROFILE_RECONNECT=$(echo "$CONFIGS_ALL" | grep -oP "reconnect=+\K\w+")
+VPN_OFFLINE_FLAG_FILE="/tmp/reconnect-vpn-offline"
 
 if [[ $(echo "$CONFIGS_ALL" | grep '\[l') ]]; then
 	PROFILE_PROTOCOL="l2tp"
@@ -92,9 +108,40 @@ function check_vpn_connection() {
 		check_dsm_status && CONNECTION_STATUS=connected
 	fi
 	if [[ $CONNECTION_STATUS = "connected" ]]; then
+		clear_connection_error_indicator
 		return 0
 	else
+		create_connection_error_indicator
 		return 1
+	fi
+}
+
+function create_connection_error_indicator() {
+	# only do these if an 'offline' status flag has not been created by previous instances of this script
+	if [ ! -f "$VPN_OFFLINE_FLAG_FILE" ]; then
+		touch "$VPN_OFFLINE_FLAG_FILE"
+
+		if [ ! -z "$STATUS_OFFLINE_INDICATOR_FILE" ] && [ ! -f "$STATUS_OFFLINE_INDICATOR_FILE" ]; then
+			touch "$STATUS_OFFLINE_INDICATOR_FILE"
+		fi
+
+		if [[ "$DISPLAY_HARDWARE_ALERTS" = true ]]; then
+			echo "3:" > /dev/ttyS1  # long beep + solid orange status light
+		fi
+	fi
+}
+
+function clear_connection_error_indicator() {
+	if [ -f "$VPN_OFFLINE_FLAG_FILE" ]; then
+		rm -f "$VPN_OFFLINE_FLAG_FILE"
+
+		if [ ! -z "$STATUS_OFFLINE_INDICATOR_FILE" ] && [ -f "$STATUS_OFFLINE_INDICATOR_FILE" ]; then
+			rm -f "$STATUS_OFFLINE_INDICATOR_FILE"
+		fi
+
+		if [[ "$DISPLAY_HARDWARE_ALERTS" = true ]]; then
+			echo "28" > /dev/ttyS1  # short beep + solid green status light
+		fi
 	fi
 }
 
@@ -115,6 +162,9 @@ fi
 echo "[I] Attempting to reconnect..."
 /usr/syno/bin/synovpnc kill_client
 sleep 20
+if [[ "$DISPLAY_HARDWARE_ALERTS" = true ]]; then
+	echo ";" > /dev/ttyS1  # blinking orange status light
+fi
 echo conf_id=$PROFILE_ID > /usr/syno/etc/synovpnclient/vpnc_connecting
 echo conf_name=$PROFILE_NAME >> /usr/syno/etc/synovpnclient/vpnc_connecting
 echo proto=$PROFILE_PROTOCOL >> /usr/syno/etc/synovpnclient/vpnc_connecting
