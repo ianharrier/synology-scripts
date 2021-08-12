@@ -7,7 +7,7 @@
 #       README:  https://github.com/ianharrier/synology-scripts
 #
 #       AUTHOR:  Ian Harrier
-#      VERSION:  1.2.1
+#      VERSION:  1.2.1 (bump)
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -18,6 +18,8 @@
 # VPN_CHECK_METHOD : How to check if the VPN connection is alive. Options:
 # - "dsm_status" (default) : assume OK if Synology DSM reports the VPN connection is alive
 # - "gateway_ping" : assume OK if the default gateway (i.e. VPN server) responds to ICMP ping
+# - "domain_ping" : assume OK if the domain (google.com) responds to ICMP ping
+
 VPN_CHECK_METHOD=dsm_status
 
 #-------------------------------------------------------------------------------
@@ -84,10 +86,26 @@ function check_gateway_ping() {
 	fi
 }
 
+function check_domain_ping() {
+	local DOMAIN="google.com"
+	local CLIENT_IP=$(/usr/syno/bin/synovpnc get_conn | grep "Client IP" | awk '{ print $4 }')
+	local TUNNEL_INTERFACE=$(ip addr | grep $CLIENT_IP | awk '{ print $7 }')
+	local DOMAIN_IP=$(nslookup "$DOMAIN" | tail -n +3 | sed -n 's/Address: \s*//p')
+	if ping -c 1 -i 1 -w 15 -I $TUNNEL_INTERFACE $DOMAIN_IP > /dev/null 2>&1; then
+		echo "[I] The domain ($DOMAIN) IP $DOMAIN_IP responded to ping."
+		return 0
+	else
+		echo "[W] The domain ($DOMAIN) IP $DOMAIN_IP did not respond to ping."
+		return 1
+	fi
+}
+
 function check_vpn_connection() {
 	local CONNECTION_STATUS=disconnected
 	if [[ $VPN_CHECK_METHOD = "gateway_ping" ]]; then
 		check_dsm_status && check_gateway_ping && CONNECTION_STATUS=connected
+	elif [[ $VPN_CHECK_METHOD = "domain_ping" ]]; then
+		check_dsm_status && check_domain_ping && CONNECTION_STATUS=connected
 	else
 		check_dsm_status && CONNECTION_STATUS=connected
 	fi
