@@ -14,3 +14,5 @@ This script can be used as a workaround for Synology DSM's less-than-ideal recon
 - `1`: reconnect successful
 - `2`: reconnect failed
 - `3`: configuration error
+
+**As of version 1.3.0, an option is added to allow pinging a custom IP address or hostname to validate VPN connectivity.**

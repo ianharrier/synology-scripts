@@ -6,8 +6,8 @@
 #    SOURCE(S):  https://community.synology.com/enu/forum/17/post/53791
 #       README:  https://github.com/ianharrier/synology-scripts
 #
-#       AUTHOR:  Ian Harrier
-#      VERSION:  1.2.1 (bump)
+#      AUTHORS:  Ian Harrier, Deac Karns
+#      VERSION:  1.3.0
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -18,9 +18,11 @@
 # VPN_CHECK_METHOD : How to check if the VPN connection is alive. Options:
 # - "dsm_status" (default) : assume OK if Synology DSM reports the VPN connection is alive
 # - "gateway_ping" : assume OK if the default gateway (i.e. VPN server) responds to ICMP ping
-# - "domain_ping" : assume OK if the domain (google.com) responds to ICMP ping
-
+# - "custom_ping" : assume OK if CUSTOM_PING_ADDRESS (configured below) responds to ICMP ping
 VPN_CHECK_METHOD=dsm_status
+
+# CUSTOM_PING_ADDRESS : IP address or hostname to ping when VPN_CHECK_METHOD=custom_ping
+CUSTOM_PING_ADDRESS=example.com
 
 #-------------------------------------------------------------------------------
 #  Process VPN config files
@@ -73,39 +75,29 @@ function check_dsm_status() {
 	fi
 }
 
-function check_gateway_ping() {
+function check_ping() {
 	local CLIENT_IP=$(/usr/syno/bin/synovpnc get_conn | grep "Client IP" | awk '{ print $4 }')
 	local TUNNEL_INTERFACE=$(ip addr | grep $CLIENT_IP | awk '{ print $7 }')
-	local GATEWAY_IP=$(ip route | grep $TUNNEL_INTERFACE | grep -oE '([0-9]+\.){3}[0-9]+ dev' | awk '{ print $1 }' | head -n 1)
-	if ping -c 1 -i 1 -w 15 -I $TUNNEL_INTERFACE $GATEWAY_IP > /dev/null 2>&1; then
-		echo "[I] The gateway IP $GATEWAY_IP responded to ping."
-		return 0
+	if [[ $VPN_CHECK_METHOD = "gateway_ping" ]]; then
+		local PING_ADDRESS=$(ip route | grep $TUNNEL_INTERFACE | grep -oE '([0-9]+\.){3}[0-9]+ dev' | awk '{ print $1 }' | head -n 1)
+		echo "[I] Pinging VPN gateway address $PING_ADDRESS."
 	else
-		echo "[W] The gateway IP $GATEWAY_IP did not respond to ping."
-		return 1
+		local PING_ADDRESS=$CUSTOM_PING_ADDRESS
+		echo "[I] Pinging custom address $PING_ADDRESS."
 	fi
-}
-
-function check_domain_ping() {
-	local DOMAIN="google.com"
-	local CLIENT_IP=$(/usr/syno/bin/synovpnc get_conn | grep "Client IP" | awk '{ print $4 }')
-	local TUNNEL_INTERFACE=$(ip addr | grep $CLIENT_IP | awk '{ print $7 }')
-	local DOMAIN_IP=$(nslookup "$DOMAIN" | tail -n +3 | sed -n 's/Address: \s*//p')
-	if ping -c 1 -i 1 -w 15 -I $TUNNEL_INTERFACE $DOMAIN_IP > /dev/null 2>&1; then
-		echo "[I] The domain ($DOMAIN) IP $DOMAIN_IP responded to ping."
+	if ping -c 1 -i 1 -w 15 -I $TUNNEL_INTERFACE $PING_ADDRESS > /dev/null 2>&1; then
+		echo "[I] The address $PING_ADDRESS responded to ping."
 		return 0
 	else
-		echo "[W] The domain ($DOMAIN) IP $DOMAIN_IP did not respond to ping."
+		echo "[W] The address $PING_ADDRESS did not respond to ping."
 		return 1
 	fi
 }
 
 function check_vpn_connection() {
 	local CONNECTION_STATUS=disconnected
-	if [[ $VPN_CHECK_METHOD = "gateway_ping" ]]; then
-		check_dsm_status && check_gateway_ping && CONNECTION_STATUS=connected
-	elif [[ $VPN_CHECK_METHOD = "domain_ping" ]]; then
-		check_dsm_status && check_domain_ping && CONNECTION_STATUS=connected
+	if [[ $VPN_CHECK_METHOD = *_ping ]]; then
+		check_dsm_status && check_ping && CONNECTION_STATUS=connected
 	else
 		check_dsm_status && CONNECTION_STATUS=connected
 	fi
