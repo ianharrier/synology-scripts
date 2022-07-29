@@ -6,8 +6,8 @@
 #    SOURCE(S):  https://community.synology.com/enu/forum/17/post/53791
 #       README:  https://github.com/ianharrier/synology-scripts
 #
-#      AUTHORS:  Ian Harrier, Deac Karns
-#      VERSION:  1.3.0
+#      AUTHORS:  Ian Harrier, Deac Karns, Michael Lake
+#      VERSION:  1.3.1
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -77,7 +77,7 @@ function check_dsm_status() {
 
 function check_ping() {
 	local CLIENT_IP=$(/usr/syno/bin/synovpnc get_conn | grep "Client IP" | awk '{ print $4 }')
-	local TUNNEL_INTERFACE=$(ip addr | grep $CLIENT_IP | awk '{ print $7 }')
+	local TUNNEL_INTERFACE=$(ip addr | grep $CLIENT_IP | awk '{ print $NF }')
 	if [[ $VPN_CHECK_METHOD = "gateway_ping" ]]; then
 		local PING_ADDRESS=$(ip route | grep $TUNNEL_INTERFACE | grep -oE '([0-9]+\.){3}[0-9]+ dev' | awk '{ print $1 }' | head -n 1)
 		echo "[I] Pinging VPN gateway address $PING_ADDRESS."
