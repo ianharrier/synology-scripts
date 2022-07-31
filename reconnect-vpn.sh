@@ -15,9 +15,9 @@
 #  User-customizable variables
 #-------------------------------------------------------------------------------
 
-# PROFILE_NAME : The VPN "Profile Name" (from DSM) you want to reconnect, in case multiple VPN profiles exist.
-# - Note: Leaving this blank will assume only one VPN profile is configured.
-PROFILE_NAME=""
+# VPN_PROFILE_NAME : The VPN "Profile Name" (from DSM) you want to reconnect, in case multiple VPN profiles exist.
+# - Note: Leaving this blank requires that only one VPN profile is configured in DSM.
+VPN_PROFILE_NAME=
 
 # VPN_CHECK_METHOD : How to check if the VPN connection is alive. Options:
 # - "dsm_status" (default) : assume OK if Synology DSM reports the VPN connection is alive
@@ -32,25 +32,22 @@ CUSTOM_PING_ADDRESS=example.com
 #  Process VPN config files
 #-------------------------------------------------------------------------------
 
-# Get the VPN config files
-CONFIGS_ALL=$(cat /usr/syno/etc/synovpnclient/{l2tp,openvpn,pptp}/*client.conf 2>/dev/null)
-
-if [ -n "$VPN_IDENTIFIER" ]; then
-  echo "[I] Searching $VPN_IDENTIFIER in VPN configurations..."
-  CONFIGS_ALL=$(echo "$CONFIGS_ALL" | grep -Poz '\[[l|o|p]\d*\][^\[]*'$VPN_IDENTIFIER'[^\[]*')
+if [[ $VPN_PROFILE_NAME ]]; then
+	echo "[I] Searching for '$VPN_PROFILE_NAME' in VPN configurations..."
 fi
 
+# Get the VPN config file(s)
+CONFIG=$(cat /usr/syno/etc/synovpnclient/{l2tp,openvpn,pptp}/*client.conf 2>/dev/null | grep -Poz "\[[l|o|p]\d+\][^\[]+$VPN_PROFILE_NAME[^\[]+" | tr -d '\0')
+
 # How many VPN profiles are there?
-CONFIGS_QTY=$(echo "$CONFIGS_ALL" | grep -e '\[l' -e '\[o' -e '\[p' | wc -l)
+PROFILE_QTY=$(echo "$CONFIG" | grep -E '^\[' | wc -l)
 
 # Only proceed if there is 1 VPN profile
-if [[ $CONFIGS_QTY -eq 1 ]]; then
-	echo "[I] 1 VPN profile found. Continuing..."
-elif [[ $CONFIGS_QTY -gt 1 ]]; then
-	echo "[E] $CONFIGS_QTY VPN profiles found. This script supports only 1 VPN profile. Exiting..."
+if [[ $PROFILE_QTY -gt 1 ]]; then
+	echo "[E] There are $PROFILE_QTY VPN profiles. Please configure VPN_PROFILE_NAME. Exiting..."
 	exit 3
-else
-	echo "[W] 0 VPN profiles found. Please create a VPN profile. Exiting..."
+elif [[ $PROFILE_QTY -eq 0 ]]; then
+	echo "[W] There are 0 VPN profiles. Please create a VPN profile. Exiting..."
 	exit 3
 fi
 
@@ -58,15 +55,15 @@ fi
 #  Set variables
 #-------------------------------------------------------------------------------
 
-PROFILE_ID=$(echo $CONFIGS_ALL | cut -d "[" -f2 | cut -d "]" -f1)
-PROFILE_NAME=$(echo "$CONFIGS_ALL" | grep -oP "conf_name=+\K\w+")
-PROFILE_RECONNECT=$(echo "$CONFIGS_ALL" | grep -oP "reconnect=+\K\w+")
+PROFILE_ID=$(echo $CONFIG | cut -d "[" -f2 | cut -d "]" -f1)
+PROFILE_NAME=$(echo "$CONFIG" | grep -oP "conf_name=+\K\w+")
+PROFILE_RECONNECT=$(echo "$CONFIG" | grep -oP "reconnect=+\K\w+")
 
-if [[ $(echo "$CONFIGS_ALL" | grep '\[l') ]]; then
+if [[ $(echo "$CONFIG" | grep '\[l') ]]; then
 	PROFILE_PROTOCOL="l2tp"
-elif [[ $(echo "$CONFIGS_ALL" | grep '\[o') ]]; then
+elif [[ $(echo "$CONFIG" | grep '\[o') ]]; then
 	PROFILE_PROTOCOL="openvpn"
-elif [[ $(echo "$CONFIGS_ALL" | grep '\[p') ]]; then
+elif [[ $(echo "$CONFIG" | grep '\[p') ]]; then
 	PROFILE_PROTOCOL="pptp"
 fi
 
