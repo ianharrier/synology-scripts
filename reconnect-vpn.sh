@@ -51,6 +51,10 @@ if [[ $VPN_PROFILE_NAME ]]; then
 	echo "[I] Searching for '$VPN_PROFILE_NAME' in VPN configurations..."
 fi
 
+if [[ $VPN_PROFILE_NAME ]]; then
+	echo "[I] Searching for '$VPN_PROFILE_NAME' in VPN configurations..."
+fi
+
 # Get the VPN config file(s)
 CONFIG=$(cat /usr/syno/etc/synovpnclient/{l2tp,openvpn,pptp}/*client.conf 2>/dev/null | grep -Poz "\[[l|o|p]\d+\][^\[]+$VPN_PROFILE_NAME[^\[]+" | tr -d '\0')
 
