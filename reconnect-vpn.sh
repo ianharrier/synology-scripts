@@ -47,6 +47,7 @@ DISPLAY_HARDWARE_ALERTS=false
 #  Process VPN config files
 #-------------------------------------------------------------------------------
 
+# Make sure we're executing as root (required to get VPN information from synovpnc)
 if [[ ${UID} -ne 0 ]]; then
 	echo "[E] This script must be run as root."
 	exit 3
