@@ -47,8 +47,9 @@ DISPLAY_HARDWARE_ALERTS=false
 #  Process VPN config files
 #-------------------------------------------------------------------------------
 
-if [[ $VPN_PROFILE_NAME ]]; then
-	echo "[I] Searching for '$VPN_PROFILE_NAME' in VPN configurations..."
+if [[ ${UID} -ne 0 ]]; then
+	echo "[E] This script must be run as root."
+	exit 3
 fi
 
 if [[ $VPN_PROFILE_NAME ]]; then
