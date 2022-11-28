@@ -43,6 +43,47 @@ DISPLAY_HARDWARE_ALERTS=false
 # - "/full/path/to/file" : full filesystem path of file to create
 #STATUS_OFFLINE_INDICATOR_FILE="/volume1/Share/__WARNING - VPN IS OFFLINE"
 
+# TRANSMISSION_SERVICE_CHECK : This is set if you are running Transmission as a
+# Docker container. This will pause the Transmission container when running in
+# the event the VPN connection is not connected and resume the container when
+# the VPN connection is retored. Options:
+# - "false" (default) : This will DISABLE this feature
+# - "true" : This will ENABLE this feature
+TRANSMISSION_CONTAINER_CHECK=false
+
+# TRANSMISSION_CONTAINER_NAME : This is the name of the docker container which
+# is running Transmission (e.g. the value when you run it:
+#   e.g. : docker run --name YOUR_CONTAINER_NAME ...
+# This will pause the Transmission container when running in the event the VPN
+# connection is not connected and resume the container when the VPN connection
+# is retored. Options:
+# - "" (default) : this will DISABLE this feature along even if
+#   TRANSMISSION_SERVICE_CHECK is set to "true" above (You MUST set this value)
+# - "YOUR_CONTAINER_NAME" : the name of the Transmission container
+TRANSMISSION_CONTAINER_NAME="transmission"
+
+# TRANSMISSION_SERVICE_CHECK : This is set if you are running Transmission as
+# a native service for Synology and not within a Docker container. This will
+# hard-disable the Transmission Synology service when running in the event the
+# VPN connection is not connected and hard-enable the container when the VPN
+# connection is retored.  Options:
+# - "false" (default) : this will DISABLE this feature
+# - "true" : This will stop the Transmission process when the VPN connection is
+#   not connected and resume the process when the VPN connection is
+#   restored.
+TRANSMISSION_SERVICE_CHECK=false
+
+# TRANSMISSION_SERVICE_NAME : This is the service name that the Synology service
+# tool uses to recognize the Transmission service by that it will start and
+# stop. You can find the name of your Transmission service by doing the
+# following and inspecting the JSON value for the service name:
+#   e.g. : cat /usr/syno/etc/synoservice.d/pkgctl-transmission.cf
+# Options:
+# - "pkgctl-transmission" (default) : the default name of the Synology service
+#   name as it comes from the Synology Community packages
+# Note : You will likely not need to change this value
+TRANSMISSION_SERVICE_NAME="pkgctl-transmission"
+
 #-------------------------------------------------------------------------------
 #  Process VPN config files
 #-------------------------------------------------------------------------------
@@ -76,12 +117,14 @@ fi
 #  Set variables
 #-------------------------------------------------------------------------------
 
+DOCKER_COMMAND=$(command -v docker)
 PROFILE_ID=$(echo $CONFIG | cut -d "[" -f2 | cut -d "]" -f1)
 PROFILE_NAME=$(echo "$CONFIG" | grep -oP "conf_name=+\K\w+")
 PROFILE_RECONNECT=$(echo "$CONFIG" | grep -oP "reconnect=+\K\w+")
 PROFILE_ID=$(echo $CONFIGS_ALL | cut -d "[" -f2 | cut -d "]" -f1)
 PROFILE_NAME=$(echo "$CONFIGS_ALL" | grep -oP "conf_name=+\K\w+")
 PROFILE_RECONNECT=$(echo "$CONFIGS_ALL" | grep -oP "reconnect=+\K\w+")
+TRANSMISSION_SERVICE_STATUS=$(/usr/syno/sbin/synoservice --status $TRANSMISSION_SERVICE_NAME | grep -oP "\[$TRANSMISSION_SERVICE_NAME\] is .*\." | sed -r "s/\[$TRANSMISSION_SERVICE_NAME\] is (.*)\./\1/g")
 VPN_OFFLINE_FLAG_FILE="/tmp/reconnect-vpn-offline"
 
 if [[ $(echo "$CONFIG" | grep '\[l') ]]; then
@@ -172,6 +215,88 @@ function clear_connection_error_indicator() {
 	fi
 }
 
+function change_transmission_container_state() {
+	local DOCKER_COMMAND_RESULT=""
+	local DOCKER_CONTAINER_STATUS=""
+	local PAUSE_UNPAUSE="${1:=pause}"
+
+	if [[ "$TRANSMISSION_CONTAINER_CHECK" != "true" ]] && [ -z "$TRANSMISSION_CONTAINER_NAME" ]; then
+		# We will skip and return 0 here because the Transmission container name
+		# is empty or unset disabling this feature
+		echo "[I] Skipping Transmission Docker container check..."
+		return 0
+	fi
+
+	if [ -x "$DOCKER_COMMAND" ]; then
+		DOCKER_CONTAINER_STATUS=$(docker container inspect --format='{{.State.Status}}' $TRANSMISSION_CONTAINER_NAME)
+		if [ $DOCKER_CONTAINER_STATUS == "running" ] && [ $PAUSE_UNPAUSE == "unpause" ]; then
+			echo "[I] Skipping unpause of Transmission Docker container since it is already running."
+			return 0
+		elif [[ $DOCKER_CONTAINER_STATUS =~ ^(paused|stopped)$ ]] && [ $PAUSE_UNPAUSE == "pause" ]; then
+			echo "[I] Skipping pause of Transmission Docker container since it is already paused."
+			return 0
+		fi
+
+		DOCKER_COMMAND_RESULT=$(docker $PAUSE_UNPAUSE $TRANSMISSION_CONTAINER_NAME)
+	else
+		echo "[W] Docker command was not found."
+		return 1
+	fi
+
+	if [ ! -z "$DOCKER_COMMAND_RESULT" ] && [ "$DOCKER_COMMAND_RESULT" == "$TRANSMISSION_CONTAINER_NAME" ]; then
+		echo "[I] Successfully able to $PAUSE_UNPAUSE the Transmission Docker container."
+		return 0
+	fi
+
+	echo "[W] Something went wrong trying to $PAUSE_UNPAUSE the Transmission Docker container: $DOCKER_COMMAND_RESULT."
+	return 1
+}
+
+function check_transmission_synology_service() {
+	TRANSMISSION_SERVICE_STATUS=$(/usr/syno/sbin/synoservice --status $TRANSMISSION_SERVICE_NAME | grep -oP "\[$TRANSMISSION_SERVICE_NAME\] is .*\." | sed -r "s/\[$TRANSMISSION_SERVICE_NAME\] is (.*)\./\1/g")
+
+	if [[ "$TRANSMISSION_SERVICE_CHECK" != "true" ]]; then
+		# We return a non-zero value because technically the service should not be
+		# checked if the service check isn't set to "true"
+		return 2
+	fi
+
+	if [ -z "$TRANSMISSION_SERVICE_STATUS" ] || [[ ! "$TRANSMISSION_SERVICE_STATUS" =~ .*(start|stop).* ]]; then
+		echo "[W] Transmission Synology service \"$TRANSMISSION_SERVICE_NAME\" not found with a start or stop status."
+		return 1
+	fi
+
+	echo "[I] Transmission Synology service \"$TRANSMISSION_SERVICE_NAME\" found with status \"$TRANSMISSION_SERVICE_STATUS\"."
+	return 0
+}
+
+function change_transmission_service_state() {
+	local SERVICE_COMMAND_RESULT=1
+	local START_STOP="${1:=stop}"
+
+	local DISABLE_ENABLE="hard-disable"
+	if [ $START_STOP == "start" ]; then
+		DISABLE_ENABLE="hard-enable"
+	fi
+
+	if [ $TRANSMISSION_SERVICE_CHECK != "true" ]; then
+		# We will skip and return 0 here because the Transmission service check is 
+		# set to something other than "true"
+		echo "[I] Skipping Transmission Synology service check..."
+		return 0
+	fi
+
+	if [ "$TRANSMISSION_SERVICE_STATUS" != "$START_STOP" ] && check_transmission_synology_service; then
+		/usr/syno/sbin/synoservice --$DISABLE_ENABLE $TRANSMISSION_SERVICE_NAME
+		SERVICE_COMMAND_RESULT=$?
+		if [ $SERVICE_COMMAND_RESULT ]; then
+			echo "[I] Successfully able to $START_STOP the Transmission Synology service."
+			return 0
+		fi
+	fi
+
+	return $SERVICE_COMMAND_RESULT
+}
 
 #-------------------------------------------------------------------------------
 #  Check VPN and reconnect if needed
@@ -183,6 +308,7 @@ if check_vpn_connection; then
 fi
 
 if [[ $PROFILE_RECONNECT != "yes" ]]; then
+	PROFILE_NAME="${PROFILE_NAME:=$VPN_PROFILE_NAME}"
 	echo "[W] Reconnect is disabled. Please enable reconnect for for the \"$PROFILE_NAME\" VPN profile. Exiting..."
 	exit 3
 fi
@@ -203,10 +329,39 @@ sleep 20
 #  Re-check the VPN connection
 #-------------------------------------------------------------------------------
 
+EXIT_CODE=0
 if check_vpn_connection; then
-	echo "[I] VPN successfully reconnected. Exiting..."
-	exit 1
+	echo "[I] VPN successfully reconnected."
+	if ! (change_transmission_container_state unpause); then
+		echo "[W] Unable to unpause the Transmission Docker container."
+	fi
+
+	if [ "$TRANSMISSION_SERVICE_STATUS" != "start" ]; then
+		if ! (change_transmission_service_state start); then
+			echo "[W] Unable to start the Transmission Synology service."
+		fi
+	else
+		echo "[I] Skipping start of Transmission Synology service since it is already started."
+	fi
 else
-	echo "[E] VPN failed to reconnect. Exiting..."
-	exit 2
+	echo "[E] VPN failed to reconnect."
+	if ! (change_transmission_container_state pause); then
+		echo "[E] Unable to pause the Transmission Docker container."
+		EXIT_CODE=3
+	fi
+
+	if [ "$TRANSMISSION_SERVICE_STATUS" != "stop" ]; then
+		if ! (change_transmission_service_state stop); then
+			echo "[E] Unable to stop the Transmission Synology service."
+			EXIT_CODE=3
+		fi
+	else
+		echo "[I] Skipping stop of Transmission Synology service since it is already stopped."
+		if [ $EXIT_CODE -gt 0 ]; then
+			exit $EXIT_CODE
+		fi
+	fi
 fi
+
+echo "Exiting..."
+exit $EXIT_CODE
