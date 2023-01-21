@@ -18,3 +18,5 @@ This script can be used as a workaround for Synology DSM's less-than-ideal recon
 **As of version 1.3.0, an option is added to allow pinging a custom IP address or hostname to validate VPN connectivity.**
 
 **As of version 1.4.0, an option is added to choose a specific VPN profile to reconnect, if multiple profiles exist. In this configuration, you could run multiple instances of this script, each targeting a specific VPN profile.**
+
+**As of version 1.5.0, options are added to run external scripts at various points. Note that the scripts must be executable, and if there are spaces in the script paths, you must either escape the spaces (e.g. `NO_RECONNECT_SCRIPT=/volume1/Scripts/script\ with\ spaces.sh`) or wrap the script paths in quotes (e.g. `NO_RECONNECT_SCRIPT='/volume1/Scripts/script with spaces.sh'`).**

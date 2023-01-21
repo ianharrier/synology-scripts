@@ -7,7 +7,7 @@
 #       README:  https://github.com/ianharrier/synology-scripts
 #
 #      AUTHORS:  Ian Harrier, Deac Karns, Michael Lake, mchalandon
-#      VERSION:  1.4.1
+#      VERSION:  1.5.0
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -27,6 +27,18 @@ VPN_CHECK_METHOD=dsm_status
 
 # CUSTOM_PING_ADDRESS : IP address or hostname to ping when VPN_CHECK_METHOD=custom_ping
 CUSTOM_PING_ADDRESS=example.com
+
+# NO_RECONNECT_SCRIPT : Run this script if a reconnection is not needed
+NO_RECONNECT_SCRIPT=
+
+# PRE_RECONNECT_SCRIPT : Run this script before a reconnection is attempted
+PRE_RECONNECT_SCRIPT=
+
+# POST_SUCCESS_SCRIPT : Run this script after a successful reconnection
+POST_SUCCESS_SCRIPT=
+
+# POST_FAILURE_SCRIPT : Run this script after a failed reconnection
+POST_FAILURE_SCRIPT=
 
 #-------------------------------------------------------------------------------
 #  Process VPN config files
@@ -115,7 +127,12 @@ function check_vpn_connection() {
 }
 
 if check_vpn_connection; then
-	echo "[I] Reconnect is not needed. Exiting..."
+	if [[ -x $NO_RECONNECT_SCRIPT ]]; then
+		echo "[I] Reconnect is not needed. Running no-reconnect script \"$NO_RECONNECT_SCRIPT\", then exiting..."
+		"$NO_RECONNECT_SCRIPT"
+	else
+		echo "[I] Reconnect is not needed. Exiting..."
+	fi
 	exit 0
 fi
 
@@ -126,6 +143,11 @@ fi
 if [[ $PROFILE_RECONNECT != "yes" ]]; then
 	echo "[W] Reconnect is disabled. Please enable reconnect for for the \"$PROFILE_NAME\" VPN profile. Exiting..."
 	exit 3
+fi
+
+if [[ -x $PRE_RECONNECT_SCRIPT ]]; then
+	echo "[I] Running pre-reconnect script \"$PRE_RECONNECT_SCRIPT\"..."
+	"$PRE_RECONNECT_SCRIPT"
 fi
 
 echo "[I] Attempting to reconnect..."
@@ -144,9 +166,19 @@ sleep 20
 #-------------------------------------------------------------------------------
 
 if check_vpn_connection; then
-	echo "[I] VPN successfully reconnected. Exiting..."
+	if [[ -x $POST_SUCCESS_SCRIPT ]]; then
+		echo "[I] VPN successfully reconnected. Running post-success script \"$POST_SUCCESS_SCRIPT\", then exiting..."
+		"$POST_SUCCESS_SCRIPT"
+	else
+		echo "[I] VPN successfully reconnected. Exiting..."
+	fi
 	exit 1
 else
-	echo "[E] VPN failed to reconnect. Exiting..."
+	if [[ -x $POST_FAILURE_SCRIPT ]]; then
+		echo "[I] VPN failed to reconnect. Running post-failure script \"$POST_FAILURE_SCRIPT\", then exiting..."
+		"$POST_FAILURE_SCRIPT"
+	else
+		echo "[E] VPN failed to reconnect. Exiting..."
+	fi
 	exit 2
 fi
