@@ -7,7 +7,7 @@
 #       README:  https://github.com/ianharrier/synology-scripts
 #
 #      AUTHORS:  Ian Harrier, Deac Karns, Michael Lake, mchalandon
-#      VERSION:  1.4.0
+#      VERSION:  1.4.1
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -131,9 +131,11 @@ fi
 echo "[I] Attempting to reconnect..."
 /usr/syno/bin/synovpnc kill_client
 sleep 20
-echo conf_id=$PROFILE_ID > /usr/syno/etc/synovpnclient/vpnc_connecting
-echo conf_name=$PROFILE_NAME >> /usr/syno/etc/synovpnclient/vpnc_connecting
-echo proto=$PROFILE_PROTOCOL >> /usr/syno/etc/synovpnclient/vpnc_connecting
+cat > /usr/syno/etc/synovpnclient/vpnc_connecting <<EOF
+conf_id=$PROFILE_ID
+conf_name=$PROFILE_NAME
+proto=$PROFILE_PROTOCOL
+EOF
 /usr/syno/bin/synovpnc connect --id=$PROFILE_ID
 sleep 20
 
