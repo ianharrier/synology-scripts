@@ -28,6 +28,9 @@ VPN_CHECK_METHOD=dsm_status
 # CUSTOM_PING_ADDRESS : IP address or hostname to ping when VPN_CHECK_METHOD=custom_ping
 CUSTOM_PING_ADDRESS=example.com
 
+# KILL_TIMEOUT : Amount of time to wait for the reconnect to go before killing it in seconds.
+KILL_TIMEOUT=120
+
 # NO_RECONNECT_SCRIPT : Run this script if a reconnection is not needed
 NO_RECONNECT_SCRIPT=
 
@@ -158,7 +161,7 @@ conf_id=$PROFILE_ID
 conf_name=$PROFILE_NAME
 proto=$PROFILE_PROTOCOL
 EOF
-/usr/syno/bin/synovpnc connect --id=$PROFILE_ID
+/bin/timeout --kill-after=$KILL_TIMEOUT /usr/syno/bin/synovpnc connect --id=$PROFILE_ID
 sleep 20
 
 #-------------------------------------------------------------------------------
