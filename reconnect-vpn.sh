@@ -161,7 +161,7 @@ conf_id=$PROFILE_ID
 conf_name=$PROFILE_NAME
 proto=$PROFILE_PROTOCOL
 EOF
-/bin/timeout --kill-after=$KILL_TIMEOUT /usr/syno/bin/synovpnc connect --id=$PROFILE_ID
+/bin/timeout -k 9 $KILL_TIMEOUT /usr/syno/bin/synovpnc connect --id=$PROFILE_ID
 sleep 20
 
 #-------------------------------------------------------------------------------
