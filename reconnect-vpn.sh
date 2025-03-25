@@ -6,8 +6,9 @@
 #    SOURCE(S):  https://community.synology.com/enu/forum/17/post/53791
 #       README:  https://github.com/ianharrier/synology-scripts
 #
-#      AUTHORS:  Ian Harrier, Deac Karns, Michael Lake, mchalandon
-#      VERSION:  1.5.0
+#      AUTHORS:  Ian Harrier, Deac Karns, Michael Lake, mchalandon,
+#                Branden R. Williams
+#      VERSION:  1.6.0
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -28,8 +29,9 @@ VPN_CHECK_METHOD=dsm_status
 # CUSTOM_PING_ADDRESS : IP address or hostname to ping when VPN_CHECK_METHOD=custom_ping
 CUSTOM_PING_ADDRESS=example.com
 
-# KILL_TIMEOUT : Amount of time to wait for the reconnect to go before killing it in seconds.
-KILL_TIMEOUT=120
+# TIMEOUT_SEC : Number of seconds to wait before terminating the reconnect process
+# - WARNING: This is an experimental feature. Leaving this blank will turn off the timeout functionality.
+TIMEOUT_SEC=
 
 # NO_RECONNECT_SCRIPT : Run this script if a reconnection is not needed
 NO_RECONNECT_SCRIPT=
@@ -161,7 +163,12 @@ conf_id=$PROFILE_ID
 conf_name=$PROFILE_NAME
 proto=$PROFILE_PROTOCOL
 EOF
-/bin/timeout -k 9 $KILL_TIMEOUT /usr/syno/bin/synovpnc connect --id=$PROFILE_ID
+if [[ -n $TIMEOUT_SEC ]]; then
+	/bin/timeout $TIMEOUT_SEC /usr/syno/bin/synovpnc connect --id=$PROFILE_ID
+else
+	/usr/syno/bin/synovpnc connect --id=$PROFILE_ID
+fi
+
 sleep 20
 
 #-------------------------------------------------------------------------------
