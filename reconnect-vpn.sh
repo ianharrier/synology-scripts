@@ -8,7 +8,7 @@
 #
 #      AUTHORS:  Ian Harrier, Deac Karns, Michael Lake, mchalandon,
 #                Branden R. Williams
-#      VERSION:  1.6.0
+#      VERSION:  1.6.1
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -50,7 +50,7 @@ POST_FAILURE_SCRIPT=
 #-------------------------------------------------------------------------------
 
 if [[ $VPN_PROFILE_NAME ]]; then
-	echo "[I] Searching for '$VPN_PROFILE_NAME' in VPN configurations..."
+	echo "[I] Searching for '$VPN_PROFILE_NAME' in VPN configurations."
 fi
 
 # Get the VPN config file(s)
@@ -61,10 +61,10 @@ PROFILE_QTY=$(echo "$CONFIG" | grep -E '^\[' | wc -l)
 
 # Only proceed if there is 1 VPN profile
 if [[ $PROFILE_QTY -gt 1 ]]; then
-	echo "[E] There are $PROFILE_QTY VPN profiles. Please configure VPN_PROFILE_NAME. Exiting..."
+	echo "[E] There are $PROFILE_QTY VPN profiles. Please configure VPN_PROFILE_NAME. Exiting."
 	exit 3
 elif [[ $PROFILE_QTY -eq 0 ]]; then
-	echo "[W] There are 0 VPN profiles. Please create a VPN profile. Exiting..."
+	echo "[W] There are 0 VPN profiles. Please create a VPN profile. Exiting."
 	exit 3
 fi
 
@@ -133,10 +133,10 @@ function check_vpn_connection() {
 
 if check_vpn_connection; then
 	if [[ -x $NO_RECONNECT_SCRIPT ]]; then
-		echo "[I] Reconnect is not needed. Running no-reconnect script \"$NO_RECONNECT_SCRIPT\", then exiting..."
+		echo "[I] Reconnect is not needed. Running no-reconnect script \"$NO_RECONNECT_SCRIPT\", then exiting."
 		"$NO_RECONNECT_SCRIPT"
 	else
-		echo "[I] Reconnect is not needed. Exiting..."
+		echo "[I] Reconnect is not needed. Exiting."
 	fi
 	exit 0
 fi
@@ -146,16 +146,16 @@ fi
 #-------------------------------------------------------------------------------
 
 if [[ $PROFILE_RECONNECT != "yes" ]]; then
-	echo "[W] Reconnect is disabled. Please enable reconnect for for the \"$PROFILE_NAME\" VPN profile. Exiting..."
+	echo "[W] Reconnect is disabled. Please enable reconnect for for the \"$PROFILE_NAME\" VPN profile. Exiting."
 	exit 3
 fi
 
 if [[ -x $PRE_RECONNECT_SCRIPT ]]; then
-	echo "[I] Running pre-reconnect script \"$PRE_RECONNECT_SCRIPT\"..."
+	echo "[I] Running pre-reconnect script \"$PRE_RECONNECT_SCRIPT\"."
 	"$PRE_RECONNECT_SCRIPT"
 fi
 
-echo "[I] Attempting to reconnect..."
+echo "[I] Attempting to reconnect."
 /usr/syno/bin/synovpnc kill_client
 sleep 20
 cat > /usr/syno/etc/synovpnclient/vpnc_connecting <<EOF
@@ -177,18 +177,18 @@ sleep 20
 
 if check_vpn_connection; then
 	if [[ -x $POST_SUCCESS_SCRIPT ]]; then
-		echo "[I] VPN successfully reconnected. Running post-success script \"$POST_SUCCESS_SCRIPT\", then exiting..."
+		echo "[I] VPN successfully reconnected. Running post-success script \"$POST_SUCCESS_SCRIPT\", then exiting."
 		"$POST_SUCCESS_SCRIPT"
 	else
-		echo "[I] VPN successfully reconnected. Exiting..."
+		echo "[I] VPN successfully reconnected. Exiting."
 	fi
 	exit 1
 else
 	if [[ -x $POST_FAILURE_SCRIPT ]]; then
-		echo "[I] VPN failed to reconnect. Running post-failure script \"$POST_FAILURE_SCRIPT\", then exiting..."
+		echo "[I] VPN failed to reconnect. Running post-failure script \"$POST_FAILURE_SCRIPT\", then exiting."
 		"$POST_FAILURE_SCRIPT"
 	else
-		echo "[E] VPN failed to reconnect. Exiting..."
+		echo "[E] VPN failed to reconnect. Exiting."
 	fi
 	exit 2
 fi
