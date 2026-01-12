@@ -4,7 +4,27 @@ Scripts for Synology DSM
 
 ## `reconnect-vpn.sh`
 
-This script can be used as a workaround for Synology DSM's less-than-ideal reconnect behavior when a VPN connection is lost. The actual magic in this script was originally written by users on a [thread on the Synology Forum](https://community.synology.com/enu/forum/17/post/53791). This script just provides a user-friendly wrapper to their code. For more information, including installation instructions, refer to my [blog post](https://blog.harrier.us/reconnecting-a-failed-vpn-connection-on-synology-dsm-6/).
+This script can be used as a workaround for Synology DSM's less-than-ideal reconnect behavior when a VPN connection is lost. The actual magic in this script was originally written by users on a [thread on the Synology Forum](https://community.synology.com/enu/forum/17/post/53791). This script just provides a user-friendly wrapper to their code.
+
+There were a number of goals in writing this script:
+
+- Require no script modifications before putting into production
+- Work with all VPN protocols (L2TP, PPTP, and OpenVPN)
+- Run natively from DSM without needing backend console access
+- Send email notifications when encountering warning or error conditions
+
+This script was written for DSM 6.0.2, but from what I have seen, it will probably work on DSM 5.0 and high.
+
+### Installation
+
+Follow the official [Synology documentation](https://kb.synology.com/en-us/DSM/help/DSM/AdminCenter/system_taskscheduler) to create a scheduled task.
+
+- Make sure the task runs as `root`.
+- This script can run frequently (e.g. every 5 minutes).
+- The **Send run details only when the script terminates abnormally** option is recommended. The script was written using different exit codes, allowing it to work well with this option.
+- In the user-defined script box, you can either:
+	- Paste the entire contents of the script itself.
+	- Include the full path to the script (after uploading the script to some location on your device).
 
 ### Version History
 
