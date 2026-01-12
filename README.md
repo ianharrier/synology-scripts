@@ -1,3 +1,34 @@
+# NOTE – Moving on from Synology
+
+As of August 2025, all of my Synology devices have been replaced with other hardware. Since this shift makes testing changes to this project difficult, I do not plan to do any additional major development on this project.
+
+Going forward, I only plan to respond to issues or pull requests if either:
+
+- The issue or pull request is related to a future change that Synology might make that breaks compatibility with `reconnect-vpn.sh`. If this does happen, I would depend on members of the community to help develop a fix.
+- The pull request is related adding or modifying a [`reconnect-vpn.sh` Community Script](reconnect-vpn.sh%20Community%20Scripts/).
+
+## Moving to what?
+
+For those who are interested, the hardware that replaced my Synology devices runs either [Proxmox Virtual Environment](https://www.proxmox.com/en/proxmox-ve) or [Proxmox Backup Server](https://www.proxmox.com/en/proxmox-backup-server) bare metal, with various VMs and/or LXC containers on top.
+
+In case you've been looking into doing something similar, I personally recommend [UGREEN NAS](https://nas.ugreen.com/) devices. The hardware build quality feels higher than equivalent Synology devices, and it is relatively easy to boot other operating systems. Proxmox VE, in my case, has been running without issue.
+
+## What about VPN reconnects?
+
+I originally wrote the `reconnect-vpn.sh` script to keep remote Synology devices connected to my local network for the purpose of offsite backups. Since moving to Proxmox, I have found the Debian OpenVPN packages to be more reliable (i.e. fewer disconnections) than those shipped with Synology DSM, and with the following systemd drop-in file, I have not had any VPN disconnections that required manual intervention.
+
+```shell
+cat > /etc/systemd/system/openvpn-client\@.service.d/restart-always-1m.conf <<'EOF'
+[Service]
+Restart=always
+RestartSec=1m
+EOF
+```
+
+---
+---
+---
+
 # synology-scripts
 
 Scripts for Synology DSM
