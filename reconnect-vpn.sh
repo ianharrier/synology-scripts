@@ -100,7 +100,7 @@ function check_dsm_status() {
 
 function check_ping() {
 	local CLIENT_IP=$(/usr/syno/bin/synovpnc get_conn | grep "Client IP" | awk '{ print $4 }')
-	local TUNNEL_INTERFACE=$(ip addr | grep $CLIENT_IP | awk '{ print $NF }')
+	local TUNNEL_INTERFACE=$(ip addr | grep $CLIENT_IP | awk 'END{ print $NF }')
 	if [[ $VPN_CHECK_METHOD = "gateway_ping" ]]; then
 		local PING_ADDRESS=$(ip route | grep $TUNNEL_INTERFACE | grep -oE '([0-9]+\.){3}[0-9]+ dev' | awk '{ print $1 }' | head -n 1)
 		echo "[I] Pinging VPN gateway address $PING_ADDRESS."
