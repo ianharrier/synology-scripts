@@ -7,8 +7,8 @@
 #       README:  https://github.com/ianharrier/synology-scripts
 #
 #      AUTHORS:  Ian Harrier, Deac Karns, Michael Lake, mchalandon,
-#                Branden R. Williams
-#      VERSION:  1.6.1
+#                Branden R. Williams, Yvain Giffoni
+#      VERSION:  1.7.0
 #      LICENSE:  MIT License
 #===============================================================================
 
@@ -28,6 +28,12 @@ VPN_CHECK_METHOD=dsm_status
 
 # CUSTOM_PING_ADDRESS : IP address or hostname to ping when VPN_CHECK_METHOD=custom_ping
 CUSTOM_PING_ADDRESS=example.com
+
+# CHECK_DELAY : delay in seconds between 2 connection checks after reconnecting (loop until successful or CHECK_MAX_COUNT reached)
+CHECK_DELAY=10
+
+# CHECK_MAX_COUNT : max number of connection check attempts after reconnecting
+CHECK_MAX_COUNT=6
 
 # TIMEOUT_SEC : Number of seconds to wait before terminating the reconnect process
 # - WARNING: This is an experimental feature. Leaving this blank will turn off the timeout functionality.
@@ -100,6 +106,10 @@ function check_dsm_status() {
 
 function check_ping() {
 	local CLIENT_IP=$(/usr/syno/bin/synovpnc get_conn | grep "Client IP" | awk '{ print $4 }')
+	if [[ -z "$CLIENT_IP" ]]; then
+		echo "[W] Network interface seems not ready yet."
+		return 1
+	fi
 	local TUNNEL_INTERFACE=$(ip addr | grep $CLIENT_IP | awk '{ print $NF }')
 	if [[ $VPN_CHECK_METHOD = "gateway_ping" ]]; then
 		local PING_ADDRESS=$(ip route | grep $TUNNEL_INTERFACE | grep -oE '([0-9]+\.){3}[0-9]+ dev' | awk '{ print $1 }' | head -n 1)
@@ -169,26 +179,35 @@ else
 	/usr/syno/bin/synovpnc connect --id=$PROFILE_ID
 fi
 
-sleep 20
-
 #-------------------------------------------------------------------------------
 #  Re-check the VPN connection
 #-------------------------------------------------------------------------------
 
-if check_vpn_connection; then
-	if [[ -x $POST_SUCCESS_SCRIPT ]]; then
-		echo "[I] VPN successfully reconnected. Running post-success script \"$POST_SUCCESS_SCRIPT\", then exiting."
-		"$POST_SUCCESS_SCRIPT"
-	else
-		echo "[I] VPN successfully reconnected. Exiting."
+CHECK_COUNT=0
+while (( CHECK_COUNT < CHECK_MAX_COUNT )); do
+	echo "[I] Waiting ${CHECK_DELAY}s before checking connection..."
+	sleep $CHECK_DELAY
+	(( CHECK_COUNT++ ))
+	echo "[I] Checking VPN connection (attempt ${CHECK_COUNT}/${CHECK_MAX_COUNT})"
+	if check_vpn_connection; then
+		if [[ -x $POST_SUCCESS_SCRIPT ]]; then
+			echo "[I] VPN successfully reconnected. Running post-success script \"$POST_SUCCESS_SCRIPT\", then exiting."
+			"$POST_SUCCESS_SCRIPT"
+		else
+			echo "[I] VPN successfully reconnected. Exiting."
+		fi
+		exit 1
 	fi
-	exit 1
+done
+
+#-------------------------------------------------------------------------------
+#  VPN reconnection failed
+#-------------------------------------------------------------------------------
+
+if [[ -x $POST_FAILURE_SCRIPT ]]; then
+	echo "[I] VPN failed to reconnect. Running post-failure script \"$POST_FAILURE_SCRIPT\", then exiting."
+	"$POST_FAILURE_SCRIPT"
 else
-	if [[ -x $POST_FAILURE_SCRIPT ]]; then
-		echo "[I] VPN failed to reconnect. Running post-failure script \"$POST_FAILURE_SCRIPT\", then exiting."
-		"$POST_FAILURE_SCRIPT"
-	else
-		echo "[E] VPN failed to reconnect. Exiting."
-	fi
-	exit 2
+	echo "[E] VPN failed to reconnect. Exiting."
 fi
+exit 2
